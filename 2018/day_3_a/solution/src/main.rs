@@ -1,11 +1,7 @@
 use parser;
-use parser::parse_line_into_rectangle;
-use rectangle::Rectangle;
 use std::collections::HashMap;
 use std::error;
 use std::process;
-use utils::get_intersections_from_sweep_line;
-use utils::{Event, EventType};
 
 fn main() {
     if let Err(e) = run() {
@@ -20,14 +16,9 @@ pub fn run() -> Result<(), Box<dyn error::Error>> {
 
     // Turn raw strings to vector of strings
     let contents = parser::read_file(&filename)?;
-    let mut rectangles: HashMap<i32, Rectangle> = HashMap::new();
+    let claims = contents.lines().collect::<Vec<&str>>();
 
-    for line in contents.lines() {
-        let parsed_rect = parse_line_into_rectangle(&line);
-        rectangles.insert(parsed_rect.id, parsed_rect);
-    }
-
-    match find_total_area_of_intersecting_rectangles(rectangles) {
+    match find_total_square_inches_of_overlapping_claims(claims) {
         Ok(area) => println!("Total overlapping area is {} squared", area),
         Err(e) => println!("Couldn't calculate area: {}", e),
     }
@@ -35,37 +26,59 @@ pub fn run() -> Result<(), Box<dyn error::Error>> {
     Ok(())
 }
 
-/// Given `[Rectangle]`, returns the total area: `i32` that two or more Rectangles intersect
-/// with each other
-pub fn find_total_area_of_intersecting_rectangles(
-    rectangles: HashMap<i32, Rectangle>,
+pub fn find_total_square_inches_of_overlapping_claims(
+    raw_claims: Vec<&str>,
 ) -> Result<i32, Box<dyn error::Error>> {
-    let mut sum_areas: i32 = 0;
+    let mut claims_map: HashMap<(i32, i32), i32> = HashMap::new();
 
-    let mut events: Vec<Event> = Vec::new();
-    // Generate all events from every rectangle. We can find the rectangle from the id
-    for (&id, rectangle) in rectangles.iter() {
-        // Push the left and right events to the sweet line
-        events.push(Event {
-            x: rectangle.left(),
-            event_type: EventType::Start,
-            rectangle_id: id,
-        });
-        events.push(Event {
-            x: rectangle.right(),
-            event_type: EventType::End,
-            rectangle_id: id,
-        });
+    for raw_claim in raw_claims.iter() {
+        let temp: Vec<i32> = raw_claim
+            .split(|x| x == ' ' || x == '@' || x == ',' || x == ':' || x == 'x' || x == '#')
+            .filter_map(|x| x.parse().ok())
+            .collect();
+        if let [left, top, width, height] = temp[1..] {
+            for x in left..left + width {
+                for y in top..top + height {
+                    // We're going to add each coordinate (unit = inches) to a hashmap
+                    // and increase it's value if it was already entered
+                    *claims_map.entry((x, y)).or_insert(0) += 1;
+                }
+            }
+        }
     }
-
-    // Sort the sweep line events so we can iterate
-    events.sort_by_key(|x| x.x);
-
-    let mut result: i32 = 0;
-    let result_rectangles = get_intersections_from_sweep_line(rectangles, events);
-    for rect in result_rectangles.unwrap() {
-        result += rect.area();
-    }
-
+    // Count every coordinate that has a value greater than 1
+    // (meaning 2 or more claims cover that coordinate)
+    let result: i32 = claims_map.values().filter(|&&x| x > 1).count() as i32;
     Ok(result)
 }
+
+// fn example_from_reddit() {
+//     let data = include_str!("input.txt");
+//     let c = data.lines().collect::<Vec<_>>();
+//     let mut claims = HashMap::new();
+//     let mut claim_names = HashMap::new();
+//     let mut intersecting = HashSet::new();
+//     let mut all = HashSet::new();
+//     for i in c.iter() {
+//         let r = i
+//             .split(|c| c == ' ' || c == '@' || c == ',' || c == ':' || c == 'x' || c == '#')
+//             .filter_map(|c| c.parse::<usize>().ok())
+//             .collect::<Vec<_>>();
+//         for i in r[1]..r[1] + r[3] {
+//             for j in r[2]..r[2] + r[4] {
+//                 *claims.entry((i, j)).or_insert(0) += 1;
+//                 all.insert(r[0]);
+//                 if !claim_names.contains_key(&(i, j)) {
+//                     claim_names.insert((i, j), r[0]);
+//                 } else {
+//                     intersecting.insert(claim_names[&(i, j)]);
+//                     intersecting.insert(r[0]);
+//                 }
+//             }
+//         }
+//     }
+//     let out1 = claims.values().filter(|v| **v > 1).count();
+//     println!("I: {}", out1);
+//     let out2 = all.difference(&intersecting).next();
+//     println!("II: {:?}", out2);
+//}

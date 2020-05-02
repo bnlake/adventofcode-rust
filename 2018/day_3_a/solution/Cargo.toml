@@ -8,5 +8,3 @@ edition = "2018"
 
 [dependencies]
 parser = { path = "../parser" }
-rectangle = { path = "../rectangle" }
-utils = { path = "../utils" }

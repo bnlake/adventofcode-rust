@@ -2,7 +2,4 @@
 members = [
     "solution",
     "parser",
-    "point",
-    "rectangle",
-    "utils"
 ]
