@@ -16,7 +16,7 @@ pub fn run() -> Result<(), Box<dyn error::Error>> {
 
     // Turn raw strings to vector of strings
     let contents = parser::read_file(&filename)?;
-    let claims = contents.lines().collect::<Vec<&str>>();
+    let claims = contents.lines().collect();
 
     match find_total_square_inches_of_overlapping_claims(claims) {
         Ok(area) => println!("Total overlapping area is {} squared", area),
